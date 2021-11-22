@@ -35,7 +35,7 @@ const excersiseSchema = new Schema({
   user_id: { type:String, required: true},
   description: { type:String, required: true },
   duration: { type:Number, required: true },
-  date: { type:Date, required: true }
+  created_at: { type:Date, required: true }
 });
 
 
@@ -87,7 +87,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
   const submittedUserId = req.params._id;
   const description  = req.body.description;
   const duration = req.body.duration;
-  const date = req.body.date;
+  const dateSubmitted = req.body.date;
 
   if (!submittedUserId || !description || !duration ) {
     console.log(req.params + " " + req.body);
@@ -103,7 +103,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
                           user_id: submittedUserId, 
                           description: description, 
                           duration: duration, 
-                          date: date === "" ? new Date().toISOString().substring(0, 10) : date });
+                          created_at: new Date().toDateString()});
         
       exercise.save(function(err, data) {
         if (err) {
@@ -114,7 +114,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
         res.send({ 
           _id: submittedUserId, 
           username: userExists.username, 
-          date: new Date(data.date).toDateString(),
+          date: new Date(data.created_at).toDateString(),
           duration : data.duration, 
           description : data.description 
         });
@@ -132,43 +132,42 @@ app.get('/api/users/:id/logs', function(req, res, next) {
 
   const userId = req.params.id;
 
-
-  User.findOne({_id: userId}, function(err, userExists) {
-    if (err) res.send({error : err});
-
-    if (userExists !== null) {
-
-
-      Exercise.find({user_id: userId})
+  Exercise.find({user_id: userId})
       .exec(function(err, results) {
         if (err) res.send({error : err});
 
         if (results.length > 0) {
 
-          const logsArray = results.map(log => {
-                          return {
-                            description : log.description,
-                            duration : parseInt(log.duration),
-                            date: new Date(log.date).toDateString()
-                          }
-                        });
+          User.findById( userId, function(err, userExists) {
 
-          res.send({
-              _id: userExists._id,
-              username: userExists.username,
-              count: results.length,
-              log:logsArray
-            
-          });
-        } else {
-          res.send({ message: "No exercises for the user"});
-        }
-      });
-    } else {
-      res.send({ message: "No such user available"});
-    }
-  });
+            if (err) res.send({error : err});
 
+            if (userExists !== null) {
+              const logsArray = results.map(log => {
+
+                console.log("Reading this" + log);
+                                  return {
+                                    description : log.description,
+                                    duration : parseInt(log.duration),
+                                    date: new Date(log.created_at).toDateString()
+                                  }
+                                });
+
+                  res.send({
+                      username: userExists.username,
+                      count: results.length,
+                      _id: userExists._id,
+                      log:logsArray
+                    
+                  });
+            } else {
+              res.send({ message: "No such user available"});
+            }
+        });
+      } else {
+        res.send({ message: "No exercises for the user"});
+      }
+    });
 });
 
 
