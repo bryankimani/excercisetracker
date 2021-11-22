@@ -45,7 +45,25 @@ let Exercise;
 Exercise = mongoose.model('Exercise', excersiseSchema);
 
 
-app.post('/api/users', function(req, res) {
+app.get('/api/users', function(req, res) {
+  User.find({}, function(err, users) {
+     
+      if (err) res.send({ error: err});
+      
+      if (users.length > 0) {
+        const usersFormatted = users.map(user => {
+          return {
+            _id: user._id.toString(),
+            username: user.username,
+            __v: user.__v
+          };
+        });
+        res.json(usersFormatted);
+      } else {
+        res.send({ message: "No available users"});
+      }
+  });
+}).post('/api/users', function(req, res) {
 
   const submittedUsername = req.body.username;
 
@@ -60,16 +78,6 @@ app.post('/api/users', function(req, res) {
     }
     console.log(data);
     res.send({ username: data.username, _id: data._id });
-  });
-}).get('/api/users', function(req, res) {
-  User.find({}, function(err, results) {
-      if (!err) res.send({ error: err});
-      
-      if (results.length > 0)  {
-        res.send(results);
-      } else {
-        res.send({ message: "No available users"});
-      }
   });
 });
 
@@ -89,7 +97,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
     if (err) res.send({error : err});
 
     if (userExists !== null) {
-      console.log("here " + userSchema);
+    
       const exercise = new Exercise({
                           user_id: submittedUserId, 
                           description: description, 
@@ -105,7 +113,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
         res.send({ 
           _id: submittedUserId, 
           username: userExists.username, 
-          date: data.date,
+          date: new Date(data.date).toDateString(),
           duration : data.duration, 
           description : data.description 
         });
@@ -123,20 +131,45 @@ app.get('/api/users/:id/logs', function(req, res, next) {
 
   const userId = req.params.id;
 
-  User.findOne({_id: userId}, function(err, userExists) {
+  let fromClean = req.query["[from"].replace(/[\[-\]]/g, '');
+  let toClean = req.query["to"].replace(/[\[-\]]/g, '');
+
+
+  let limit = req.query.limit ? parseInt(req.query.limit) : {};
+  let startDate = fromClean ? new Date(fromClean).toISOString().substring(0, 10) : {};
+  let endDate = toClean ? new Date(toClean).toISOString().substring(0, 10) : {};
+
+
+
+  console.log(limit + startDate + " " + endDate);
+
+  User.findOne({_id: userId})
+  .exec(function(err, userExists) {
     if (err) res.send({error : err});
 
     if (userExists !== null) {
 
-      Exercise.find({user_id: userId}, function(err, results) {
+
+      Exercise.find({user_id: userId, date: {$gte: startDate, $lt: endDate }})
+      .limit(limit)
+      .exec(function(err, results) {
         if (err) res.send({error : err});
 
         if (results.length > 0) {
+
+          const logsArray = results.map(log => {
+                          return {
+                            description : log.description,
+                            duration : log.duration,
+                            date: new Date(log.date).toDateString()
+                          }
+                        });
+
           res.send({
             _id: userExists._id,
             username: userExists.username,
             count: results.length,
-            log: results
+            log:logsArray 
           });
         } else {
           res.send({ message: "No exercises for the user"});
