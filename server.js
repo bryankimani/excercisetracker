@@ -2,6 +2,7 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const bodyParser = require('body-parser');
+var _ = require('lodash');
 
 const mongoose = require('mongoose');
 
@@ -102,7 +103,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
                           user_id: submittedUserId, 
                           description: description, 
                           duration: duration, 
-                          date: date === ""? new Date().toISOString().substring(0, 10) : date });
+                          date: date === "" ? new Date().toISOString().substring(0, 10) : date });
         
       exercise.save(function(err, data) {
         if (err) {
@@ -131,27 +132,14 @@ app.get('/api/users/:id/logs', function(req, res, next) {
 
   const userId = req.params.id;
 
-  let fromClean = req.query["[from"].replace(/[\[-\]]/g, '');
-  let toClean = req.query["to"].replace(/[\[-\]]/g, '');
 
-
-  let limit = req.query.limit ? parseInt(req.query.limit) : {};
-  let startDate = fromClean ? new Date(fromClean).toISOString().substring(0, 10) : {};
-  let endDate = toClean ? new Date(toClean).toISOString().substring(0, 10) : {};
-
-
-
-  console.log(limit + startDate + " " + endDate);
-
-  User.findOne({_id: userId})
-  .exec(function(err, userExists) {
+  User.findOne({_id: userId}, function(err, userExists) {
     if (err) res.send({error : err});
 
     if (userExists !== null) {
 
 
-      Exercise.find({user_id: userId, date: {$gte: startDate, $lt: endDate }})
-      .limit(limit)
+      Exercise.find({user_id: userId})
       .exec(function(err, results) {
         if (err) res.send({error : err});
 
@@ -160,16 +148,17 @@ app.get('/api/users/:id/logs', function(req, res, next) {
           const logsArray = results.map(log => {
                           return {
                             description : log.description,
-                            duration : log.duration,
+                            duration : parseInt(log.duration),
                             date: new Date(log.date).toDateString()
                           }
                         });
 
           res.send({
-            _id: userExists._id,
-            username: userExists.username,
-            count: results.length,
-            log:logsArray 
+              _id: userExists._id,
+              username: userExists.username,
+              count: results.length,
+              log:logsArray
+            
           });
         } else {
           res.send({ message: "No exercises for the user"});
