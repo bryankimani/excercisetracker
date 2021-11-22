@@ -14,6 +14,8 @@ app.use(bodyParser.urlencoded({ extended: true }))
  
 // parse application/json
 app.use(bodyParser.json());
+app.use(bodyParser.raw());
+
 
 app.use(cors())
 app.use(express.static('public'))
@@ -29,7 +31,7 @@ const userSchema = new Schema({
 });
 
 const excersiseSchema = new Schema({
-  user_id: { type:Number, required: true},
+  user_id: { type:String, required: true},
   description: { type:String, required: true },
   duration: { type:Number, required: true },
   date: { type:Date, required: true }
@@ -73,19 +75,23 @@ app.post('/api/users', function(req, res) {
 
 app.post('/api/users/:_id/exercises', function(req, res) {
 
-  const submittedUserId = req.body._id;
+  const submittedUserId = req.params._id;
   const description  = req.body.description;
   const duration = req.body.duration;
   const date = req.body.date;
 
-  if (!submittedUserId || !description || !duration ) res.send({ error: "Provide required field value"});
+  if (!submittedUserId || !description || !duration ) {
+    console.log(req.params + " " + req.body);
+    res.send({ error: "Provide required field value"});
+  };
 
-  User.findOne({_id: submittedUserId}, function(err, userExists) {
+  User.findById(submittedUserId, function(err, userExists) {
     if (err) res.send({error : err});
 
     if (userExists !== null) {
+      console.log("here " + userSchema);
       const exercise = new Exercise({
-                          user_id:submittedUserId, 
+                          user_id: submittedUserId, 
                           description: description, 
                           duration: duration, 
                           date: date === ""? new Date().toISOString().substring(0, 10) : date });
@@ -106,6 +112,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
       });
       
     } else {
+      console.log(userExists);
       res.send({ error: "Provide user is not available"});
     }
 
