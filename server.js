@@ -63,10 +63,10 @@ app.post('/api/users', function(req, res) {
   User.find({}, function(err, results) {
       if (!err) res.send({ error: err});
       
-      if (results.length === 0)  {
-        res.send({ message: "No available users"})
+      if (results.length > 0)  {
+        res.send(results);
       } else {
-        res.send(results)
+        res.send({ message: "No available users"});
       }
   });
 });
@@ -130,7 +130,7 @@ app.get('/api/users/:id/logs', function(req, res, next) {
             username: userExists.username,
             count: results.length,
             log: results
-          })
+          });
         } else {
           res.send({ message: "No exercises for the user"});
         }
