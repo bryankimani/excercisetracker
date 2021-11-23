@@ -103,7 +103,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
                           user_id: submittedUserId, 
                           description: description, 
                           duration: duration, 
-                          created_at: new Date().toDateString()});
+                          created_at: _.isEmpty(dateSubmitted) ? new Date().toDateString() : dateSubmitted });
         
       exercise.save(function(err, data) {
         if (err) {
@@ -112,7 +112,7 @@ app.post('/api/users/:_id/exercises', function(req, res) {
         }
       
         res.send({ 
-          _id: submittedUserId, 
+          _id: userExists._id, 
           username: userExists.username, 
           date: new Date(data.created_at).toDateString(),
           duration : data.duration, 
@@ -131,8 +131,23 @@ app.post('/api/users/:_id/exercises', function(req, res) {
 app.get('/api/users/:id/logs', function(req, res, next) {
 
   const userId = req.params.id;
+  const startDate = req.query.from;
+  const endDate = req.query.to;
+  const submittedLimit = _.isEmpty(req.query.limit) ? {} : parseInt(req.query.limit);
 
-  Exercise.find({user_id: userId})
+  let filter= {
+    user_id: userId
+    };
+
+  if (!_.isEmpty(req.query.from) && !_.isEmpty(req.query.to)) {
+    filter.created_at = {
+        $gte: startDate, 
+        $lte: endDate
+      };
+  }  
+
+  Exercise.find(filter)
+      .limit(submittedLimit) 
       .exec(function(err, results) {
         if (err) res.send({error : err});
 
